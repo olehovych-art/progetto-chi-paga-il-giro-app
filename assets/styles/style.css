@@ -8,10 +8,8 @@ body{
     background-color: #18181b;
 }
 
-#ultimoGiro{
-    margin: 1rem;
-}
-
+#ultimoGiro,
 #sezioneRegistra{
-    margin: 1rem;
+    width: calc(100% - 2rem);
+    margin-inline: 1rem;
 }
