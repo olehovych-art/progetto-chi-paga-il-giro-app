@@ -156,7 +156,7 @@ function eliminaGruppo(idDaEliminare) {
 }
 
 // ==========================================
-// 4. REGISTRAZIONE GIRO
+// 4. REGISTRAZIONE E CANCELLAZIONE GIRO
 // ==========================================
 if (btnRecord) {
   btnRecord.addEventListener('click', () => {
@@ -182,6 +182,17 @@ if (btnRecord) {
     payerSelect.value = "";
     aggiornaInterfaccia();
   });
+}
+
+function eliminaSingoloGiro(idGiro) {
+  if (!confirm("Vuoi cancellare questo giro registrato per errore?")) {
+    return;
+  }
+
+  giri = giri.filter(g => Number(g.id) !== Number(idGiro));
+  localStorage.setItem('giriChiOffre', JSON.stringify(giri));
+
+  aggiornaInterfaccia();
 }
 
 // ==========================================
@@ -268,18 +279,31 @@ function aggiornaInterfaccia() {
     });
   }
 
-  // F. Cronologia Giri
+  // F. Cronologia Giri (con opzione per eliminare il singolo giro)
   historyList.innerHTML = "";
   if (giriGruppo.length === 0) {
     historyList.innerHTML = '<li class="list-group-item bg-transparent text-secondary text-center">Nessun giro registrato</li>';
   } else {
     [...giriGruppo].reverse().forEach(g => {
-      historyList.innerHTML += `
-        <li class="list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center">
-          <span>🍻 <strong>${g.pagante}</strong> ha offerto un giro</span>
-          <small class="text-secondary">${g.orario}</small>
-        </li>
+      const li = document.createElement('li');
+      li.className = "list-group-item bg-transparent text-white border-secondary d-flex justify-content-between align-items-center py-2 px-1";
+
+      li.innerHTML = `
+        <div>
+          🍻 <strong>${g.pagante}</strong> ha offerto un giro
+          <br><small class="text-secondary">${g.orario}</small>
+        </div>
+        <button class="btn btn-outline-danger btn-sm border-0 delete-round-btn px-2" title="Elimina questo giro">
+          ✖
+        </button>
       `;
+
+      const deleteBtn = li.querySelector('.delete-round-btn');
+      deleteBtn.addEventListener('click', () => {
+        eliminaSingoloGiro(g.id);
+      });
+
+      historyList.appendChild(li);
     });
   }
 }
