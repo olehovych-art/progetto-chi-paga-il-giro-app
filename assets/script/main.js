@@ -40,4 +40,3 @@ navHistory.addEventListener('click', () => {
   switchView(viewHistory, navHistory);
 });
 
-console.log("ciao")
