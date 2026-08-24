@@ -14,3 +14,12 @@ body{
     width: calc(100% - 2rem);
     margin-inline: 1rem;
 }
+
+
+
+
+
+/* Rimuove l'alone blu sui pulsanti della barra in basso al click */
+.navbar .btn:focus {
+  box-shadow: none;
+}
