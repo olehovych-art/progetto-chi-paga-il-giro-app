@@ -55,15 +55,33 @@ const btnCreateGroup = document.getElementById('btnCreateGroup');
 const groupsList = document.getElementById('groupsList');
 
 // Aggiunge un amico alla lista temporanea
-btnAddMember.addEventListener('click', () => {
+// Aggiunge un amico (Funzione riutilizzabile)
+function aggiungiAmicoTemporaneo() {
   const nomeAmico = memberNameInput.value.trim();
-  
   if (nomeAmico !== "") {
     membriTemporanei.push(nomeAmico);
     memberNameInput.value = "";
     aggiornaBadgeMembri();
   }
-});
+}
+
+// Evento al CLICK / TAP sul pulsante
+if (btnAddMember) {
+  btnAddMember.addEventListener('click', (e) => {
+    e.preventDefault(); // Blocca qualsiasi comportamento nativo del form su iOS
+    aggiungiAmicoTemporaneo();
+  });
+}
+
+// Evento quando l'utente preme "Invio" dalla tastiera dello smartphone
+if (memberNameInput) {
+  memberNameInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      aggiungiAmicoTemporaneo();
+    }
+  });
+}
 
 function aggiornaBadgeMembri() {
   tempMembersList.innerHTML = "";
