@@ -16,70 +16,86 @@
         <h1 id="appTitle" class="h3 fw-bold mb-4 text-warning text-center mt-3">CHI OFFRE IL GIRO?🍻</h1>
     </header>
     <main>
+        <div class="container py-4 text-center" style="max-width: 480px;">
 
-        <!-- CARD ULTIMO GIRO -->
-        <div id="ultimoGiro" class="card bg-dark border-secondary text-white mb-4 p-3 shadow text-center">
+            <!-- ================= VISTA HOME ================= -->
+            <div id="viewHome" class="view-section">
 
-            <!-- ETICHETTA SUPERIORE -->
-            <small id="lastPayerLabel" class="text-uppercase text-secondary fw-bold small">
-                L'ultimo giro è stato offerto da:
-            </small>
+                <!-- CARD ULTIMO GIRO -->
+                <div id="ultimoGiro" class="card bg-dark border-secondary text-white mb-4 p-3 shadow text-center">
+                    <small id="lastPayerLabel" class="text-uppercase text-secondary fw-bold small">
+                        L'ultimo giro è stato offerto da:
+                    </small>
+                    <div class="my-3">
+                        <span id="lastPayerName" class="display-6 fw-bold text-warning">
+                            👑 Nessuno 👑
+                        </span>
+                    </div>
+                    <small id="lastPayerTime" class="text-secondary">
+                        Nessun giro registrato stasera
+                    </small>
+                </div>
 
-            <!-- NOME DEL PAGANTE -->
-            <div class="my-3">
-                <span id="lastPayerName" class="display-6 fw-bold text-warning">
-                    👑 Nessuno 👑
-                </span>
+                <!-- REGISTRA NUOVO GIRO -->
+                <div id="sezioneRegistra" class="card bg-dark border-secondary text-white mb-4 p-3 shadow">
+                    <h5 id="recordTitle" class="card-title h6 text-uppercase text-secondary mb-3 text-center">
+                        Registra Giro di Oggi
+                    </h5>
+                    <div class="mb-3">
+                        <select id="payerSelect" class="form-select form-select-lg bg-secondary text-white border-0">
+                            <option value="">Seleziona chi paga...</option>
+                        </select>
+                    </div>
+                    <button id="btnRecord" class="btn btn-warning btn-lg fw-bold w-100 py-3 shadow-sm">
+                        🍻 REGISTRA IL GIRO 🍻
+                    </button>
+                </div>
+
+                <!-- RIEPILOGO GRUPPO -->
+                <div id="sezioneRiepilogo" class="card bg-dark border-secondary text-white p-3 shadow text-start">
+                    <h5 id="summaryTitle" class="card-title h6 text-uppercase text-secondary mb-3 text-center">
+                        Riepilogo Gruppo
+                    </h5>
+                    <ul id="statsList" class="list-group list-group-flush">
+                        <li
+                            class="list-group-item bg-transparent text-white d-flex justify-content-between align-items-center border-secondary px-0">
+                            <span>Marco</span>
+                            <span class="badge bg-warning text-dark rounded-pill">🍻 2 giri</span>
+                        </li>
+                    </ul>
+                </div>
+
             </div>
 
-            <!-- ORARIO DEL GIRO -->
-            <small id="lastPayerTime" class="text-secondary">
-                Nessun giro registrato stasera
-            </small>
-
-        </div>
-
-        <!-- REGISTRA NUOVO GIRO -->
-        <div id="sezioneRegistra" class="card bg-dark border-secondary text-white mb-4 p-3 shadow">
-
-            <h5 id="recordTitle" class="card-title h6 text-uppercase text-secondary mb-3 text-center">
-                Registra Giro di Oggi
-            </h5>
-
-            <!-- SELEZIONE AMICO -->
-            <div class="mb-3">
-                <select id="payerSelect" class="form-select form-select-lg bg-secondary text-white border-0">
-                    <option value="">Seleziona chi paga...</option>
-                </select>
+            <!-- ================= VISTA GRUPPI ================= -->
+            <div id="viewGroups" class="view-section d-none">
+                <div class="card bg-dark border-secondary text-white p-3 shadow text-start">
+                    <h5 class="card-title h6 text-uppercase text-secondary mb-3 text-center">Gestione Gruppi</h5>
+                    <div class="mb-3">
+                        <label for="newGroupName" class="form-label text-secondary small">Nome Nuovo Gruppo</label>
+                        <input type="text" id="newGroupName" class="form-control bg-secondary text-white border-0"
+                            placeholder="Es. Amici del Pub...">
+                    </div>
+                    <button id="btnCreateGroup" class="btn btn-warning w-100 fw-bold">Crea Gruppo</button>
+                    <ul id="groupsList" class="list-group list-group-flush mt-3">
+                        <li class="list-group-item bg-transparent text-white border-secondary">Amici del Pub (Attivo)
+                        </li>
+                    </ul>
+                </div>
             </div>
 
-            <!-- PULSANTE REGISTRA -->
-            <button id="btnRecord" class="btn btn-warning btn-lg fw-bold w-100 py-3 shadow-sm">
-                🍻 REGISTRA IL GIRO 🍻
-            </button>
+            <!-- ================= VISTA CRONOLOGIA ================= -->
+            <div id="viewHistory" class="view-section d-none">
+                <div class="card bg-dark border-secondary text-white p-3 shadow text-start">
+                    <h5 class="card-title h6 text-uppercase text-secondary mb-3 text-center">Cronologia Giri</h5>
+                    <ul id="historyList" class="list-group list-group-flush">
+                        <li class="list-group-item bg-transparent text-secondary text-center">Nessun giro registrato
+                        </li>
+                    </ul>
+                </div>
+            </div>
 
         </div>
-
-        <!-- RIEPILOGO GRUPPO -->
-        <div id="sezioneRiepilogo" class="card bg-dark border-secondary text-white p-3 shadow text-start">
-
-            <h5 id="summaryTitle" class="card-title h6 text-uppercase text-secondary mb-3 text-center">
-                Riepilogo Gruppo
-            </h5>
-
-            <!-- LISTA DEGLI AMICI E DEI GIRI -->
-            <ul id="statsList" class="list-group list-group-flush">
-                <!-- Esempio temporaneo per la grafica (JavaScript poi lo sostituirà) -->
-                <li
-                    class="list-group-item bg-transparent text-white d-flex justify-content-between align-items-center border-secondary px-0">
-                    <span>Marco</span>
-                    <span class="badge bg-warning text-dark rounded-pill">🍻 2 giri</span>
-                </li>
-            </ul>
-
-        </div>
-
-
     </main>
 
 
