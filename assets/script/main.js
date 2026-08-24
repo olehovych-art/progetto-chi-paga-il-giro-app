@@ -294,7 +294,7 @@ function aggiornaInterfaccia() {
           <br><small class="text-secondary">${g.orario}</small>
         </div>
         <button class="btn btn-outline-danger btn-sm border-0 delete-round-btn px-2" title="Elimina questo giro">
-          ✖
+          Elimina
         </button>
       `;
 
