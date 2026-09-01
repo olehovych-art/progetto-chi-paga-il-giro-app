@@ -167,13 +167,20 @@ if (btnRecord) {
       return;
     }
 
-    const oraAttuale = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    // Salviamo sia data che ora completa (es: "01/09/2026, 13:44")
+    const dataOraAttuale = new Date().toLocaleString('it-IT', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
     const nuovoGiro = {
       id: Date.now(),
       gruppoId: Number(gruppoAttivoId),
       pagante: chiPaga,
-      orario: oraAttuale
+      orario: dataOraAttuale
     };
 
     giri.push(nuovoGiro);
@@ -259,10 +266,10 @@ function aggiornaInterfaccia() {
   if (giriGruppo.length > 0) {
     const ultimoGiro = giriGruppo[giriGruppo.length - 1];
     lastPayerName.innerHTML = `👑 ${ultimoGiro.pagante} 👑`;
-    lastPayerTime.textContent = `Registrato alle ${ultimoGiro.orario}`;
+    lastPayerTime.textContent = `Registrato il ${ultimoGiro.orario}`;
   } else {
     lastPayerName.innerHTML = `👑 Nessuno 👑`;
-    lastPayerTime.textContent = `Nessun giro registrato stasera`;
+    lastPayerTime.textContent = `Nessun giro registrato`;
   }
 
   // E. Riepilogo Gruppo (Conteggio Giri per ciascun amico)
@@ -291,7 +298,7 @@ function aggiornaInterfaccia() {
       li.innerHTML = `
         <div>
           🍻 <strong>${g.pagante}</strong> ha offerto un giro
-          <br><small class="text-secondary">${g.orario}</small>
+          <br><small class="text-secondary">Il ${g.orario}</small>
         </div>
         <button class="btn btn-outline-danger btn-sm border-0 delete-round-btn px-2" title="Elimina questo giro">
           Elimina
