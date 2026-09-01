@@ -6,6 +6,7 @@ let giri = JSON.parse(localStorage.getItem('giriChiOffre')) || [];
 let gruppoAttivoId = localStorage.getItem('gruppoAttivoId') || (gruppi.length > 0 ? gruppi[0].id : null);
 
 let membriTemporanei = [];
+let modalitaModificaId = null; // ID del gruppo in fase di modifica (null = nuovo gruppo)
 
 // Elementi di navigazione
 const navHome = document.getElementById('navHome');
@@ -62,7 +63,7 @@ if (navGroups) navGroups.addEventListener('click', () => switchView(viewGroups, 
 if (navHistory) navHistory.addEventListener('click', () => switchView(viewHistory, navHistory));
 
 // ==========================================
-// 3. CREAZIONE E SELEZIONE GRUPPI
+// 3. GESTIONE PARTECIPANTI TEMPORANEI
 // ==========================================
 function aggiungiAmicoTemporaneo() {
   const nomeAmico = memberNameInput.value.trim();
@@ -89,13 +90,41 @@ if (memberNameInput) {
   });
 }
 
+function rimuoviMembroTemporaneo(index) {
+  membriTemporanei.splice(index, 1);
+  aggiornaBadgeMembri();
+}
+
+function modificaMembroTemporaneo(index) {
+  const vecchioNome = membriTemporanei[index];
+  const nuovoNome = prompt("Modifica il nome del partecipante:", vecchioNome);
+  if (nuovoNome !== null && nuovoNome.trim() !== "") {
+    membriTemporanei[index] = nuovoNome.trim();
+    aggiornaBadgeMembri();
+  }
+}
+
 function aggiornaBadgeMembri() {
   tempMembersList.innerHTML = "";
-  membriTemporanei.forEach((amico) => {
-    tempMembersList.innerHTML += `<span class="badge bg-secondary">${amico}</span>`;
+  membriTemporanei.forEach((amico, idx) => {
+    const badge = document.createElement('span');
+    badge.className = "badge bg-secondary d-inline-flex align-items-center gap-2 p-2";
+    
+    badge.innerHTML = `
+      <span class="member-name" style="cursor: pointer;" title="Clicca per modificare">${amico} ✏️</span>
+      <button type="button" class="btn-close btn-close-white" style="font-size: 0.65rem;" aria-label="Rimuovi"></button>
+    `;
+
+    badge.querySelector('.member-name').addEventListener('click', () => modificaMembroTemporaneo(idx));
+    badge.querySelector('.btn-close').addEventListener('click', () => rimuoviMembroTemporaneo(idx));
+
+    tempMembersList.appendChild(badge);
   });
 }
 
+// ==========================================
+// 4. CREAZIONE, MODIFICA E CANCELLAZIONE GRUPPI
+// ==========================================
 if (btnCreateGroup) {
   btnCreateGroup.addEventListener('click', () => {
     const nomeGruppo = groupNameInput.value.trim();
@@ -105,24 +134,54 @@ if (btnCreateGroup) {
       return;
     }
 
-    const nuovoGruppo = {
-      id: Date.now(),
-      nome: nomeGruppo,
-      membri: [...membriTemporanei]
-    };
+    if (modalitaModificaId !== null) {
+      // MODIFICA GRUPPO ESISTENTE
+      const gruppoIndex = gruppi.findIndex(g => Number(g.id) === Number(modalitaModificaId));
+      if (gruppoIndex !== -1) {
+        gruppi[gruppoIndex].nome = nomeGruppo;
+        gruppi[gruppoIndex].membri = [...membriTemporanei];
+      }
+    } else {
+      // CREAZIONE NUOVO GRUPPO
+      const nuovoGruppo = {
+        id: Date.now(),
+        nome: nomeGruppo,
+        membri: [...membriTemporanei]
+      };
 
-    gruppi.push(nuovoGruppo);
-    gruppoAttivoId = nuovoGruppo.id;
+      gruppi.push(nuovoGruppo);
+      gruppoAttivoId = nuovoGruppo.id;
+    }
 
     localStorage.setItem('gruppiChiOffre', JSON.stringify(gruppi));
     localStorage.setItem('gruppoAttivoId', gruppoAttivoId);
 
-    groupNameInput.value = "";
-    membriTemporanei = [];
-    tempMembersList.innerHTML = "";
-
+    resetFormGruppo();
     aggiornaInterfaccia();
   });
+}
+
+function resetFormGruppo() {
+  modalitaModificaId = null;
+  groupNameInput.value = "";
+  memberNameInput.value = "";
+  membriTemporanei = [];
+  tempMembersList.innerHTML = "";
+  btnCreateGroup.textContent = "💾 Salva Gruppo";
+}
+
+function avviaModificaGruppo(idGruppo) {
+  const gruppo = gruppi.find(g => Number(g.id) === Number(idGruppo));
+  if (!gruppo) return;
+
+  modalitaModificaId = gruppo.id;
+  groupNameInput.value = gruppo.nome;
+  membriTemporanei = [...gruppo.membri];
+
+  btnCreateGroup.textContent = "✏️ Salva Modifiche";
+
+  aggiornaBadgeMembri();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function selezionaGruppo(id) {
@@ -152,11 +211,15 @@ function eliminaGruppo(idDaEliminare) {
     localStorage.removeItem('gruppoAttivoId');
   }
 
+  if (Number(modalitaModificaId) === Number(idDaEliminare)) {
+    resetFormGruppo();
+  }
+
   aggiornaInterfaccia();
 }
 
 // ==========================================
-// 4. REGISTRAZIONE E CANCELLAZIONE GIRO
+// 5. REGISTRAZIONE E CANCELLAZIONE GIRO
 // ==========================================
 if (btnRecord) {
   btnRecord.addEventListener('click', () => {
@@ -167,7 +230,6 @@ if (btnRecord) {
       return;
     }
 
-    // Salviamo sia data che ora completa (es: "01/09/2026, 13:44")
     const dataOraAttuale = new Date().toLocaleString('it-IT', {
       day: '2-digit',
       month: '2-digit',
@@ -203,12 +265,12 @@ function eliminaSingoloGiro(idGiro) {
 }
 
 // ==========================================
-// 5. RENDERING E REFRESH INTERFACCIA
+// 6. RENDERING E REFRESH INTERFACCIA
 // ==========================================
 function aggiornaInterfaccia() {
   const gruppoCorrente = gruppi.find(g => Number(g.id) === Number(gruppoAttivoId));
 
-  // A. Lista Gruppi nella scheda "Gruppi"
+  // A. Lista Gruppi salvati
   groupsList.innerHTML = "";
   if (gruppi.length === 0) {
     groupsList.innerHTML = '<li class="list-group-item bg-transparent text-secondary text-center">Nessun gruppo creato</li>';
@@ -224,10 +286,13 @@ function aggiornaInterfaccia() {
           <strong>${g.nome}</strong>
           <br><small class="text-secondary">${g.membri.join(', ')}</small>
         </div>
-        <div class="d-flex align-items-center gap-2">
+        <div class="d-flex align-items-center gap-1">
           <span class="badge ${isAttivo ? 'bg-warning text-dark' : 'bg-secondary'} select-badge" style="cursor: pointer;">
             ${isAttivo ? 'Attivo' : 'Seleziona'}
           </span>
+          <button class="btn btn-outline-warning btn-sm border-0 edit-btn px-2" title="Modifica gruppo">
+            ✏️
+          </button>
           <button class="btn btn-outline-danger btn-sm border-0 delete-btn px-2" title="Elimina gruppo">
             🗑️
           </button>
@@ -236,11 +301,17 @@ function aggiornaInterfaccia() {
 
       const selectArea = li.querySelector('.flex-grow-1');
       const selectBadge = li.querySelector('.select-badge');
+      const editBtn = li.querySelector('.edit-btn');
       const deleteBtn = li.querySelector('.delete-btn');
 
       const handleSelect = () => selezionaGruppo(g.id);
       selectArea.addEventListener('click', handleSelect);
       selectBadge.addEventListener('click', handleSelect);
+
+      editBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        avviaModificaGruppo(g.id);
+      });
 
       deleteBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -251,7 +322,7 @@ function aggiornaInterfaccia() {
     });
   }
 
-  // B. Popola la <select> degli amici nella Home
+  // B. Popola la select dei paganti nella Home
   payerSelect.innerHTML = '<option value="">Seleziona chi paga...</option>';
   if (gruppoCorrente) {
     gruppoCorrente.membri.forEach(amico => {
@@ -259,7 +330,7 @@ function aggiornaInterfaccia() {
     });
   }
 
-  // C. Filtra i giri del gruppo attivo
+  // C. Filtra i giri per il gruppo attivo
   const giriGruppo = giri.filter(g => Number(g.gruppoId) === Number(gruppoAttivoId));
 
   // D. Card Ultimo Giro
@@ -272,7 +343,7 @@ function aggiornaInterfaccia() {
     lastPayerTime.textContent = `Nessun giro registrato`;
   }
 
-  // E. Riepilogo Gruppo (Conteggio Giri per ciascun amico)
+  // E. Riepilogo Giri
   statsList.innerHTML = "";
   if (gruppoCorrente) {
     gruppoCorrente.membri.forEach(amico => {
@@ -286,7 +357,7 @@ function aggiornaInterfaccia() {
     });
   }
 
-  // F. Cronologia Giri (con opzione per eliminare il singolo giro)
+  // F. Cronologia Giri
   historyList.innerHTML = "";
   if (giriGruppo.length === 0) {
     historyList.innerHTML = '<li class="list-group-item bg-transparent text-secondary text-center">Nessun giro registrato</li>';
