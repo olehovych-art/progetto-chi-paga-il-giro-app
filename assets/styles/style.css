@@ -50,6 +50,47 @@ body{
     cursor: grabbing;
 }
 
+.roulette-machine{
+    border: 1px solid rgba(255, 193, 7, 0.45);
+    background: radial-gradient(ellipse at center, #343a40 0%, #212529 75%);
+}
+
+.roulette-result{
+    min-height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #f8f9fa;
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.roulette-result[aria-busy="true"]{
+    color: #ffc107;
+    animation: roulette-roll 0.16s ease-in-out infinite alternate;
+}
+
+.roulette-result.is-winner{
+    color: #ffc107;
+    text-shadow: 0 0 1rem rgba(255, 193, 7, 0.8);
+    animation: roulette-win 0.65s ease-in-out 2;
+}
+
+@keyframes roulette-roll{
+    from{ transform: translateY(-2px) scale(0.98); }
+    to{ transform: translateY(2px) scale(1.02); }
+}
+
+@keyframes roulette-win{
+    50%{ transform: scale(1.08); }
+}
+
+@media (prefers-reduced-motion: reduce){
+    .roulette-result[aria-busy="true"],
+    .roulette-result.is-winner{
+        animation: none;
+    }
+}
 
 
 

@@ -13,6 +13,8 @@ let immagineInRitaglio = null;
 let scalaRitaglio = 1;
 let posizioneRitaglio = { x: 0, y: 0 };
 let trascinamentoRitaglio = null;
+let timerRoulette = null;
+let rouletteInCorso = false;
 const modaleRitaglioFoto = bootstrap.Modal.getOrCreateInstance(document.getElementById('photoCropModal'));
 
 // Elementi di navigazione
@@ -40,6 +42,8 @@ const groupsList = document.getElementById('groupsList');
 // Elementi Vista Home & Cronologia
 const payerSelect = document.getElementById('payerSelect');
 const btnRecord = document.getElementById('btnRecord');
+const btnRoulette = document.getElementById('btnRoulette');
+const rouletteResult = document.getElementById('rouletteResult');
 const lastPayerName = document.getElementById('lastPayerName');
 const lastPayerTime = document.getElementById('lastPayerTime');
 const lastPayerAvatar = document.getElementById('lastPayerAvatar');
@@ -547,6 +551,66 @@ if (btnRecord) {
   });
 }
 
+function resettaRoulette() {
+  if (timerRoulette !== null) clearTimeout(timerRoulette);
+  timerRoulette = null;
+  rouletteInCorso = false;
+  if (!btnRoulette || !rouletteResult) return;
+
+  rouletteResult.classList.remove('is-winner');
+  rouletteResult.setAttribute('aria-busy', 'false');
+  rouletteResult.textContent = 'Pronto per l’estrazione?';
+  btnRoulette.textContent = '🎰 SFORTUNA / ROULETTE';
+  btnRoulette.disabled = false;
+}
+
+function avviaRoulette() {
+  const gruppoCorrente = gruppi.find(g => Number(g.id) === Number(gruppoAttivoId));
+  const partecipanti = gruppoCorrente ? membriUnici(gruppoCorrente.membri) : [];
+  if (!btnRoulette || !rouletteResult || partecipanti.length === 0 || rouletteInCorso) return;
+
+  rouletteInCorso = true;
+  btnRoulette.disabled = true;
+  rouletteResult.classList.remove('is-winner');
+  rouletteResult.setAttribute('aria-busy', 'true');
+
+  const vincitore = partecipanti[Math.floor(Math.random() * partecipanti.length)];
+  const scattiMassimi = 24;
+  let scatto = 0;
+
+  function mostraProssimoNome() {
+    const estrazioneConclusa = scatto === scattiMassimi;
+    const nomeMostrato = estrazioneConclusa
+      ? vincitore
+      : partecipanti[Math.floor(Math.random() * partecipanti.length)];
+    rouletteResult.textContent = estrazioneConclusa
+      ? `🎉 ${vincitore} offre il prossimo giro! 🎉`
+      : `🍻 ${nomeMostrato} 🍻`;
+
+    if (estrazioneConclusa) {
+      timerRoulette = null;
+      rouletteInCorso = false;
+      rouletteResult.classList.add('is-winner');
+      rouletteResult.setAttribute('aria-busy', 'false');
+      payerSelect.value = vincitore;
+      btnRoulette.textContent = '🎰 ESTRAI DI NUOVO';
+      btnRoulette.disabled = false;
+      return;
+    }
+
+    const progresso = scatto / scattiMassimi;
+    const ritardo = 55 + Math.round(300 * progresso ** 3);
+    scatto++;
+    timerRoulette = setTimeout(mostraProssimoNome, ritardo);
+  }
+
+  mostraProssimoNome();
+}
+
+if (btnRoulette) {
+  btnRoulette.addEventListener('click', avviaRoulette);
+}
+
 function eliminaSingoloGiro(idGiro) {
   if (!confirm("Vuoi cancellare questo giro registrato per errore?")) {
     return;
@@ -562,6 +626,7 @@ function eliminaSingoloGiro(idGiro) {
 // 6. RENDERING E REFRESH INTERFACCIA
 // ==========================================
 function aggiornaInterfaccia() {
+  resettaRoulette();
   const gruppoCorrente = gruppi.find(g => Number(g.id) === Number(gruppoAttivoId));
 
   // A. Lista Gruppi salvati
@@ -622,6 +687,10 @@ function aggiornaInterfaccia() {
   // C. Filtra i giri per il gruppo attivo
   const giriGruppo = giri.filter(g => Number(g.gruppoId) === Number(gruppoAttivoId));
   const membriCorrenti = gruppoCorrente ? membriUnici(gruppoCorrente.membri) : [];
+  if (btnRoulette) btnRoulette.disabled = membriCorrenti.length === 0;
+  if (rouletteResult && membriCorrenti.length === 0) {
+    rouletteResult.textContent = 'Crea un gruppo per iniziare.';
+  }
   const { paganteConsigliato } = calcolaProssimoTurno(membriCorrenti, giriGruppo);
 
   membriCorrenti.forEach(amico => {
