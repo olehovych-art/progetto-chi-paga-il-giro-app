@@ -26,7 +26,8 @@
                     <small id="lastPayerLabel" class="text-uppercase text-secondary fw-bold small">
                         L'ultimo giro è stato offerto da:
                     </small>
-                    <div class="my-3">
+                    <div class="my-3 d-flex flex-column align-items-center gap-2">
+                        <div id="lastPayerAvatar" class="payer-avatar" aria-hidden="true">🍻</div>
                         <span id="lastPayerName" class="display-6 fw-bold text-warning">
                             👑 Nessuno 👑
                         </span>
@@ -37,6 +38,7 @@
                     <div class="border-top border-secondary mt-3 pt-3">
                         <small class="text-uppercase text-secondary fw-bold">Oggi il giro dovrebbe offrirlo🤔💸
                             :</small>
+                        <div id="todayPayerAvatar" class="payer-avatar mx-auto mt-2" aria-hidden="true">🍻</div>
                         <div id="todayPayerName" class="fs-4 fw-bold text-warning mt-1">
                             Crea un gruppo per iniziare
                         </div>
@@ -99,6 +101,8 @@
                         <div id="tempMembersList" class="d-flex flex-wrap gap-2 mt-2">
                             <!-- Qui appariranno i badge con i nomi aggiunti -->
                         </div>
+                        <input type="file" id="memberPhotoInput" accept="image/*" class="d-none"
+                            aria-label="Seleziona la foto del partecipante">
                     </div>
 
                     <!-- PULSANTE CREA GRUPPO -->
@@ -129,6 +133,28 @@
         </div>
     </main>
 
+    <div class="modal fade" id="photoCropModal" tabindex="-1" aria-labelledby="photoCropTitle" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark text-white border-secondary">
+                <div class="modal-header border-secondary">
+                    <h2 class="modal-title fs-5" id="photoCropTitle">Centra la foto</h2>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Annulla"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <p class="text-secondary small">Trascina la foto per centrare il soggetto e regola lo zoom.</p>
+                    <canvas id="photoCropCanvas" class="photo-crop-canvas" width="512" height="512"
+                        aria-label="Anteprima del ritaglio quadrato"></canvas>
+                    <label for="photoCropZoom" class="form-label d-block mt-3">Zoom</label>
+                    <input type="range" id="photoCropZoom" class="form-range" min="1" max="3" step="0.01" value="1">
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Annulla</button>
+                    <button type="button" id="btnSaveCroppedPhoto" class="btn btn-warning fw-bold">Usa questa foto</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- NAVIGAZIONE IN BASSO (BOTTOM NAV) -->
     <nav class="navbar fixed-bottom bg-dark border-top border-secondary py-2">

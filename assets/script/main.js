@@ -6,7 +6,14 @@ let giri = JSON.parse(localStorage.getItem('giriChiOffre')) || [];
 let gruppoAttivoId = localStorage.getItem('gruppoAttivoId') || (gruppi.length > 0 ? gruppi[0].id : null);
 
 let membriTemporanei = [];
+let fotoMembriTemporanee = {};
 let modalitaModificaId = null; // ID del gruppo in fase di modifica (null = nuovo gruppo)
+let membroFotoInAttesa = null;
+let immagineInRitaglio = null;
+let scalaRitaglio = 1;
+let posizioneRitaglio = { x: 0, y: 0 };
+let trascinamentoRitaglio = null;
+const modaleRitaglioFoto = bootstrap.Modal.getOrCreateInstance(document.getElementById('photoCropModal'));
 
 // Elementi di navigazione
 const navHome = document.getElementById('navHome');
@@ -22,6 +29,11 @@ const groupNameInput = document.getElementById('groupNameInput');
 const memberNameInput = document.getElementById('memberNameInput');
 const btnAddMember = document.getElementById('btnAddMember');
 const tempMembersList = document.getElementById('tempMembersList');
+const memberPhotoInput = document.getElementById('memberPhotoInput');
+const photoCropCanvas = document.getElementById('photoCropCanvas');
+const photoCropZoom = document.getElementById('photoCropZoom');
+const btnSaveCroppedPhoto = document.getElementById('btnSaveCroppedPhoto');
+const photoCropContext = photoCropCanvas.getContext('2d');
 const btnCreateGroup = document.getElementById('btnCreateGroup');
 const groupsList = document.getElementById('groupsList');
 
@@ -30,7 +42,9 @@ const payerSelect = document.getElementById('payerSelect');
 const btnRecord = document.getElementById('btnRecord');
 const lastPayerName = document.getElementById('lastPayerName');
 const lastPayerTime = document.getElementById('lastPayerTime');
+const lastPayerAvatar = document.getElementById('lastPayerAvatar');
 const todayPayerName = document.getElementById('todayPayerName');
+const todayPayerAvatar = document.getElementById('todayPayerAvatar');
 const statsList = document.getElementById('statsList');
 const historyList = document.getElementById('historyList');
 
@@ -48,6 +62,172 @@ function membriUnici(membri) {
       nomiVisti.add(nomeNormalizzato);
       return true;
     });
+}
+
+function inizialiPartecipante(nome) {
+  const parole = nome.trim().split(/\s+/).filter(Boolean);
+  if (parole.length === 0) return '🍻';
+  return parole.length > 1
+    ? `${parole[0][0]}${parole[parole.length - 1][0]}`.toLocaleUpperCase('it-IT')
+    : parole[0].slice(0, 2).toLocaleUpperCase('it-IT');
+}
+
+function aggiornaAvatar(elemento, nome, foto) {
+  elemento.setAttribute('aria-label', nome ? `Foto di ${nome}` : 'Nessun partecipante');
+  if (foto) {
+    const immagine = document.createElement('img');
+    immagine.src = foto;
+    immagine.alt = '';
+    elemento.replaceChildren(immagine);
+  } else {
+    elemento.textContent = inizialiPartecipante(nome || '');
+  }
+}
+
+function dimensioniImmagineRitaglio() {
+  const dimensione = photoCropCanvas.width;
+  const scalaBase = Math.max(
+    dimensione / immagineInRitaglio.width,
+    dimensione / immagineInRitaglio.height
+  ) * scalaRitaglio;
+  return {
+    larghezza: immagineInRitaglio.width * scalaBase,
+    altezza: immagineInRitaglio.height * scalaBase
+  };
+}
+
+function limitaPosizioneRitaglio() {
+  const dimensione = photoCropCanvas.width;
+  const dimensioni = dimensioniImmagineRitaglio();
+  posizioneRitaglio.x = Math.min(0, Math.max(dimensione - dimensioni.larghezza, posizioneRitaglio.x));
+  posizioneRitaglio.y = Math.min(0, Math.max(dimensione - dimensioni.altezza, posizioneRitaglio.y));
+}
+
+function disegnaAnteprimaRitaglio() {
+  const dimensione = photoCropCanvas.width;
+  const dimensioni = dimensioniImmagineRitaglio();
+  limitaPosizioneRitaglio();
+  photoCropContext.clearRect(0, 0, dimensione, dimensione);
+  photoCropContext.drawImage(
+    immagineInRitaglio,
+    posizioneRitaglio.x,
+    posizioneRitaglio.y,
+    dimensioni.larghezza,
+    dimensioni.altezza
+  );
+}
+
+function preparaFotoPartecipante(file, nome) {
+  if (!file.type.startsWith('image/')) {
+    alert('Seleziona un file immagine.');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    alert('La foto deve essere più piccola di 10 MB.');
+    return;
+  }
+
+  const lettore = new FileReader();
+  lettore.onerror = () => alert('Impossibile leggere il file selezionato.');
+  lettore.onload = () => {
+    const immagine = new Image();
+    immagine.onerror = () => alert('Impossibile caricare questa immagine. Prova con un altro file.');
+    immagine.onload = () => {
+      immagineInRitaglio = immagine;
+      membroFotoInAttesa = nome;
+      scalaRitaglio = 1;
+      photoCropZoom.value = '1';
+      const dimensioni = dimensioniImmagineRitaglio();
+      posizioneRitaglio = {
+        x: (photoCropCanvas.width - dimensioni.larghezza) / 2,
+        y: (photoCropCanvas.height - dimensioni.altezza) / 2
+      };
+      disegnaAnteprimaRitaglio();
+      modaleRitaglioFoto.show();
+    };
+    immagine.src = lettore.result;
+  };
+  lettore.readAsDataURL(file);
+}
+
+photoCropZoom.addEventListener('input', () => {
+  const dimensioniPrecedenti = dimensioniImmagineRitaglio();
+  const centro = {
+    x: posizioneRitaglio.x + dimensioniPrecedenti.larghezza / 2,
+    y: posizioneRitaglio.y + dimensioniPrecedenti.altezza / 2
+  };
+  scalaRitaglio = Number(photoCropZoom.value);
+  const nuoveDimensioni = dimensioniImmagineRitaglio();
+  posizioneRitaglio = {
+    x: centro.x - nuoveDimensioni.larghezza / 2,
+    y: centro.y - nuoveDimensioni.altezza / 2
+  };
+  disegnaAnteprimaRitaglio();
+});
+
+photoCropCanvas.addEventListener('pointerdown', (event) => {
+  if (!immagineInRitaglio) return;
+  const rect = photoCropCanvas.getBoundingClientRect();
+  const fattore = photoCropCanvas.width / rect.width;
+  trascinamentoRitaglio = {
+    pointerId: event.pointerId,
+    x: event.clientX,
+    y: event.clientY,
+    cropX: posizioneRitaglio.x,
+    cropY: posizioneRitaglio.y,
+    fattore
+  };
+  photoCropCanvas.setPointerCapture(event.pointerId);
+});
+
+photoCropCanvas.addEventListener('pointermove', (event) => {
+  if (!trascinamentoRitaglio || trascinamentoRitaglio.pointerId !== event.pointerId) return;
+  posizioneRitaglio = {
+    x: trascinamentoRitaglio.cropX + (event.clientX - trascinamentoRitaglio.x) * trascinamentoRitaglio.fattore,
+    y: trascinamentoRitaglio.cropY + (event.clientY - trascinamentoRitaglio.y) * trascinamentoRitaglio.fattore
+  };
+  disegnaAnteprimaRitaglio();
+});
+
+photoCropCanvas.addEventListener('pointerup', () => {
+  trascinamentoRitaglio = null;
+});
+
+photoCropCanvas.addEventListener('pointercancel', () => {
+  trascinamentoRitaglio = null;
+});
+
+btnSaveCroppedPhoto.addEventListener('click', () => {
+  if (!immagineInRitaglio || !membroFotoInAttesa) return;
+  let fotoRitagliata;
+  try {
+    fotoRitagliata = photoCropCanvas.toDataURL('image/jpeg', 0.82);
+  } catch {
+    alert('Impossibile salvare questa foto. Prova con un file JPEG, PNG o WebP.');
+    return;
+  }
+  fotoMembriTemporanee[normalizzaNome(membroFotoInAttesa)] = fotoRitagliata;
+  modaleRitaglioFoto.hide();
+  aggiornaBadgeMembri();
+});
+
+document.getElementById('photoCropModal').addEventListener('hidden.bs.modal', () => {
+  immagineInRitaglio = null;
+  membroFotoInAttesa = null;
+  trascinamentoRitaglio = null;
+});
+
+function fotoMembriSalvate(membri) {
+  const foto = {};
+  membriUnici(membri).forEach(nome => {
+    const chiave = normalizzaNome(nome);
+    if (fotoMembriTemporanee[chiave]) foto[chiave] = fotoMembriTemporanee[chiave];
+  });
+  return foto;
+}
+
+function fotoPartecipante(gruppo, nome) {
+  return gruppo && gruppo.fotoMembri ? gruppo.fotoMembri[normalizzaNome(nome)] : null;
 }
 
 function calcolaProssimoTurno(membri, giriGruppo) {
@@ -141,6 +321,7 @@ if (memberNameInput) {
 }
 
 function rimuoviMembroTemporaneo(index) {
+  delete fotoMembriTemporanee[normalizzaNome(membriTemporanei[index])];
   membriTemporanei.splice(index, 1);
   aggiornaBadgeMembri();
 }
@@ -157,8 +338,34 @@ function modificaMembroTemporaneo(index) {
     return;
   }
 
+  const vecchiaChiave = normalizzaNome(vecchioNome);
+  const nuovaChiave = normalizzaNome(nomeModificato);
+  if (fotoMembriTemporanee[vecchiaChiave]) {
+    fotoMembriTemporanee[nuovaChiave] = fotoMembriTemporanee[vecchiaChiave];
+    delete fotoMembriTemporanee[vecchiaChiave];
+  }
   membriTemporanei[index] = nomeModificato;
   aggiornaBadgeMembri();
+}
+
+function scegliFotoMembro(nome) {
+  membroFotoInAttesa = nome;
+  memberPhotoInput.click();
+}
+
+function rimuoviFotoMembro(nome) {
+  delete fotoMembriTemporanee[normalizzaNome(nome)];
+  aggiornaBadgeMembri();
+}
+
+if (memberPhotoInput) {
+  memberPhotoInput.addEventListener('change', () => {
+    const file = memberPhotoInput.files[0];
+    const nome = membroFotoInAttesa;
+    membroFotoInAttesa = null;
+    memberPhotoInput.value = '';
+    if (file && nome) preparaFotoPartecipante(file, nome);
+  });
 }
 
 function aggiornaBadgeMembri() {
@@ -166,14 +373,40 @@ function aggiornaBadgeMembri() {
   membriTemporanei.forEach((amico, idx) => {
     const badge = document.createElement('span');
     badge.className = "badge bg-secondary d-inline-flex align-items-center gap-2 p-2";
-    
-    badge.innerHTML = `
-      <span class="member-name" style="cursor: pointer;" title="Clicca per modificare">${amico} ✏️</span>
-      <button type="button" class="btn-close btn-close-white" style="font-size: 0.65rem;" aria-label="Rimuovi"></button>
-    `;
+    const nome = document.createElement('span');
+    nome.className = 'member-name';
+    nome.style.cursor = 'pointer';
+    nome.title = 'Clicca per modificare';
+    nome.textContent = `${amico} ✏️`;
+    nome.addEventListener('click', () => modificaMembroTemporaneo(idx));
 
-    badge.querySelector('.member-name').addEventListener('click', () => modificaMembroTemporaneo(idx));
-    badge.querySelector('.btn-close').addEventListener('click', () => rimuoviMembroTemporaneo(idx));
+    const fotoButton = document.createElement('button');
+    fotoButton.type = 'button';
+    fotoButton.className = 'btn btn-sm btn-outline-light border-0 p-0';
+    fotoButton.textContent = fotoMembriTemporanee[normalizzaNome(amico)] ? '📷✓' : '📷';
+    fotoButton.title = fotoMembriTemporanee[normalizzaNome(amico)] ? 'Modifica foto' : 'Aggiungi foto';
+    fotoButton.setAttribute('aria-label', `${fotoButton.title} di ${amico}`);
+    fotoButton.addEventListener('click', () => scegliFotoMembro(amico));
+
+    badge.append(nome, fotoButton);
+    if (fotoMembriTemporanee[normalizzaNome(amico)]) {
+      const rimuoviFotoButton = document.createElement('button');
+      rimuoviFotoButton.type = 'button';
+      rimuoviFotoButton.className = 'btn btn-sm btn-outline-light border-0 p-0';
+      rimuoviFotoButton.textContent = '×';
+      rimuoviFotoButton.title = 'Rimuovi foto';
+      rimuoviFotoButton.setAttribute('aria-label', `Rimuovi la foto di ${amico}`);
+      rimuoviFotoButton.addEventListener('click', () => rimuoviFotoMembro(amico));
+      badge.appendChild(rimuoviFotoButton);
+    }
+
+    const rimuoviButton = document.createElement('button');
+    rimuoviButton.type = 'button';
+    rimuoviButton.className = 'btn-close btn-close-white';
+    rimuoviButton.style.fontSize = '0.65rem';
+    rimuoviButton.setAttribute('aria-label', 'Rimuovi partecipante');
+    rimuoviButton.addEventListener('click', () => rimuoviMembroTemporaneo(idx));
+    badge.appendChild(rimuoviButton);
 
     tempMembersList.appendChild(badge);
   });
@@ -197,13 +430,15 @@ if (btnCreateGroup) {
       if (gruppoIndex !== -1) {
         gruppi[gruppoIndex].nome = nomeGruppo;
         gruppi[gruppoIndex].membri = membriUnici(membriTemporanei);
+        gruppi[gruppoIndex].fotoMembri = fotoMembriSalvate(membriTemporanei);
       }
     } else {
       // CREAZIONE NUOVO GRUPPO
       const nuovoGruppo = {
         id: Date.now(),
         nome: nomeGruppo,
-        membri: membriUnici(membriTemporanei)
+        membri: membriUnici(membriTemporanei),
+        fotoMembri: fotoMembriSalvate(membriTemporanei)
       };
 
       gruppi.push(nuovoGruppo);
@@ -223,6 +458,7 @@ function resetFormGruppo() {
   groupNameInput.value = "";
   memberNameInput.value = "";
   membriTemporanei = [];
+  fotoMembriTemporanee = {};
   tempMembersList.innerHTML = "";
   btnCreateGroup.textContent = "💾 Salva Gruppo";
 }
@@ -234,6 +470,7 @@ function avviaModificaGruppo(idGruppo) {
   modalitaModificaId = gruppo.id;
   groupNameInput.value = gruppo.nome;
   membriTemporanei = membriUnici(gruppo.membri);
+  fotoMembriTemporanee = { ...(gruppo.fotoMembri || {}) };
 
   btnCreateGroup.textContent = "✏️ Salva Modifiche";
 
@@ -397,6 +634,11 @@ function aggiornaInterfaccia() {
 
   if (todayPayerName) {
     todayPayerName.textContent = paganteConsigliato || "Crea un gruppo per iniziare";
+    aggiornaAvatar(
+      todayPayerAvatar,
+      paganteConsigliato,
+      fotoPartecipante(gruppoCorrente, paganteConsigliato)
+    );
   }
 
   // D. Card Ultimo Giro
@@ -404,9 +646,14 @@ function aggiornaInterfaccia() {
     const ultimoGiro = giriGruppo[giriGruppo.length - 1];
     lastPayerName.innerHTML = `👑 ${ultimoGiro.pagante} 👑`;
     lastPayerTime.textContent = `Registrato il ${ultimoGiro.orario}`;
+    const nomePagante = membriCorrenti.find(nome =>
+      normalizzaNome(nome) === normalizzaNome(ultimoGiro.pagante)
+    ) || ultimoGiro.pagante;
+    aggiornaAvatar(lastPayerAvatar, nomePagante, fotoPartecipante(gruppoCorrente, nomePagante));
   } else {
     lastPayerName.innerHTML = `👑 Nessuno 👑`;
     lastPayerTime.textContent = `Nessun giro registrato`;
+    aggiornaAvatar(lastPayerAvatar, null, null);
   }
 
   // E. Riepilogo Giri
