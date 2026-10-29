@@ -13,6 +13,7 @@ Un'applicazione web semplice e intuitiva pensata per registrare e tenere traccia
 
 - **👑 Ultimo Pagante in Evidenza:** Visualizza subito in primo piano chi ha offerto l'ultimo giro.
 - **⚡ Registrazione Rapida:** Seleziona l'amico e registra il giro offerto in due semplici tap.
+- **🔄 Turni Equi:** Suggerisce chi ha offerto meno giri e consente di registrare solo i partecipanti con il conteggio più basso, evitando ripetizioni prima che gli altri li raggiungano.
 - **📊 Classifica di Gruppo:** Monitora il totale dei giri offerti da ciascun partecipante.
 - **🕒 Storico Cronologico:** Registro dettagliato delle ultime registrazioni con orario.
 - **📱 Design Mobile-First:** Interfaccia ottimizzata per l'uso immediato da smartphone al pub o al ristorante.

@@ -30,8 +30,54 @@ const payerSelect = document.getElementById('payerSelect');
 const btnRecord = document.getElementById('btnRecord');
 const lastPayerName = document.getElementById('lastPayerName');
 const lastPayerTime = document.getElementById('lastPayerTime');
+const todayPayerName = document.getElementById('todayPayerName');
 const statsList = document.getElementById('statsList');
 const historyList = document.getElementById('historyList');
+
+function normalizzaNome(nome) {
+  return nome.trim().toLocaleLowerCase('it-IT');
+}
+
+function membriUnici(membri) {
+  const nomiVisti = new Set();
+  return membri
+    .map(nome => nome.trim())
+    .filter(nome => {
+      const nomeNormalizzato = normalizzaNome(nome);
+      if (!nomeNormalizzato || nomiVisti.has(nomeNormalizzato)) return false;
+      nomiVisti.add(nomeNormalizzato);
+      return true;
+    });
+}
+
+function calcolaProssimoTurno(membri, giriGruppo) {
+  const conteggi = membri.map(amico => {
+    const nomeNormalizzato = normalizzaNome(amico);
+    const giriPersona = giriGruppo.filter(g => normalizzaNome(g.pagante) === nomeNormalizzato);
+    return {
+      amico,
+      conteggio: giriPersona.length,
+      ultimoGiroIndice: giriGruppo.reduce(
+        (ultimoIndice, giro, indice) => normalizzaNome(giro.pagante) === nomeNormalizzato ? indice : ultimoIndice,
+        -1
+      )
+    };
+  });
+
+  if (conteggi.length === 0) {
+    return { partecipantiInTurno: [], paganteConsigliato: null };
+  }
+
+  const minimoGiri = Math.min(...conteggi.map(({ conteggio }) => conteggio));
+  const partecipantiInTurno = conteggi
+    .filter(({ conteggio }) => conteggio === minimoGiri)
+    .sort((a, b) => a.ultimoGiroIndice - b.ultimoGiroIndice);
+
+  return {
+    partecipantiInTurno: partecipantiInTurno.map(({ amico }) => amico),
+    paganteConsigliato: partecipantiInTurno[0].amico
+  };
+}
 
 // ==========================================
 // 2. NAVIGAZIONE SCHERMATE (VISTE)
@@ -67,11 +113,15 @@ if (navHistory) navHistory.addEventListener('click', () => switchView(viewHistor
 // ==========================================
 function aggiungiAmicoTemporaneo() {
   const nomeAmico = memberNameInput.value.trim();
-  if (nomeAmico !== "") {
-    membriTemporanei.push(nomeAmico);
-    memberNameInput.value = "";
-    aggiornaBadgeMembri();
+  if (nomeAmico === "") return;
+  if (membriTemporanei.some(amico => normalizzaNome(amico) === normalizzaNome(nomeAmico))) {
+    alert("Questo partecipante è già presente nel gruppo.");
+    return;
   }
+
+  membriTemporanei.push(nomeAmico);
+  memberNameInput.value = "";
+  aggiornaBadgeMembri();
 }
 
 if (btnAddMember) {
@@ -98,10 +148,17 @@ function rimuoviMembroTemporaneo(index) {
 function modificaMembroTemporaneo(index) {
   const vecchioNome = membriTemporanei[index];
   const nuovoNome = prompt("Modifica il nome del partecipante:", vecchioNome);
-  if (nuovoNome !== null && nuovoNome.trim() !== "") {
-    membriTemporanei[index] = nuovoNome.trim();
-    aggiornaBadgeMembri();
+  if (nuovoNome === null || nuovoNome.trim() === "") return;
+  const nomeModificato = nuovoNome.trim();
+  if (membriTemporanei.some((amico, indice) =>
+    indice !== index && normalizzaNome(amico) === normalizzaNome(nomeModificato)
+  )) {
+    alert("Questo partecipante è già presente nel gruppo.");
+    return;
   }
+
+  membriTemporanei[index] = nomeModificato;
+  aggiornaBadgeMembri();
 }
 
 function aggiornaBadgeMembri() {
@@ -139,14 +196,14 @@ if (btnCreateGroup) {
       const gruppoIndex = gruppi.findIndex(g => Number(g.id) === Number(modalitaModificaId));
       if (gruppoIndex !== -1) {
         gruppi[gruppoIndex].nome = nomeGruppo;
-        gruppi[gruppoIndex].membri = [...membriTemporanei];
+        gruppi[gruppoIndex].membri = membriUnici(membriTemporanei);
       }
     } else {
       // CREAZIONE NUOVO GRUPPO
       const nuovoGruppo = {
         id: Date.now(),
         nome: nomeGruppo,
-        membri: [...membriTemporanei]
+        membri: membriUnici(membriTemporanei)
       };
 
       gruppi.push(nuovoGruppo);
@@ -176,7 +233,7 @@ function avviaModificaGruppo(idGruppo) {
 
   modalitaModificaId = gruppo.id;
   groupNameInput.value = gruppo.nome;
-  membriTemporanei = [...gruppo.membri];
+  membriTemporanei = membriUnici(gruppo.membri);
 
   btnCreateGroup.textContent = "✏️ Salva Modifiche";
 
@@ -284,7 +341,7 @@ function aggiornaInterfaccia() {
       li.innerHTML = `
         <div class="flex-grow-1" style="cursor: pointer;">
           <strong>${g.nome}</strong>
-          <br><small class="text-secondary">${g.membri.join(', ')}</small>
+          <br><small class="text-secondary">${membriUnici(g.membri).join(', ')}</small>
         </div>
         <div class="d-flex align-items-center gap-1">
           <span class="badge ${isAttivo ? 'bg-warning text-dark' : 'bg-secondary'} select-badge" style="cursor: pointer;">
@@ -324,14 +381,23 @@ function aggiornaInterfaccia() {
 
   // B. Popola la select dei paganti nella Home
   payerSelect.innerHTML = '<option value="">Seleziona chi paga...</option>';
-  if (gruppoCorrente) {
-    gruppoCorrente.membri.forEach(amico => {
-      payerSelect.innerHTML += `<option value="${amico}">${amico}</option>`;
-    });
-  }
 
   // C. Filtra i giri per il gruppo attivo
   const giriGruppo = giri.filter(g => Number(g.gruppoId) === Number(gruppoAttivoId));
+  const membriCorrenti = gruppoCorrente ? membriUnici(gruppoCorrente.membri) : [];
+  const { paganteConsigliato } = calcolaProssimoTurno(membriCorrenti, giriGruppo);
+
+  membriCorrenti.forEach(amico => {
+    const option = document.createElement('option');
+    option.value = amico;
+    option.textContent = amico;
+    payerSelect.appendChild(option);
+  });
+  payerSelect.value = paganteConsigliato || "";
+
+  if (todayPayerName) {
+    todayPayerName.textContent = paganteConsigliato || "Crea un gruppo per iniziare";
+  }
 
   // D. Card Ultimo Giro
   if (giriGruppo.length > 0) {
@@ -346,8 +412,8 @@ function aggiornaInterfaccia() {
   // E. Riepilogo Giri
   statsList.innerHTML = "";
   if (gruppoCorrente) {
-    gruppoCorrente.membri.forEach(amico => {
-      const conteggio = giriGruppo.filter(g => g.pagante === amico).length;
+    membriCorrenti.forEach(amico => {
+      const conteggio = giriGruppo.filter(g => normalizzaNome(g.pagante) === normalizzaNome(amico)).length;
       statsList.innerHTML += `
         <li class="list-group-item bg-transparent text-white d-flex justify-content-between align-items-center border-secondary px-0">
           <span>${amico}</span>
